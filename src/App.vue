@@ -42,7 +42,7 @@
         <span>?</span>
         <div class="hint-tooltip" v-if="showHints">
           <p><strong>Ctrl+A</strong> - Добавить новый шаг</p>
-          <p><strong>Ctrl+X</strong> - Удалить выбранный шаг</p>
+          <p><strong>Ctrl+X</strong> - Удалить выбранный шаг или связь</p>
         </div>
       </button>
     </div>
@@ -216,6 +216,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
   (event.key === 'x' || event.key === 'ч')) {
     event.preventDefault();
     deleteSelectedNodeWithEdges();
+    deleteSelectedEdge();
   }
   if ((event.ctrlKey || event.metaKey) &&
   (event.key === 'a' || event.key === 'ф')) {
