@@ -42,7 +42,7 @@
         <span>?</span>
         <div class="hint-tooltip" v-if="showHints">
           <p><strong>Ctrl+A</strong> - Добавить новый шаг</p>
-          <p><strong>Ctrl+X</strong> - Удалить выбранный шаг</p>
+          <p><strong>Ctrl+X</strong> - Удалить выбранный шаг или связь</p>
         </div>
       </button>
     </div>
@@ -216,6 +216,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
   (event.key === 'x' || event.key === 'ч')) {
     event.preventDefault();
     deleteSelectedNodeWithEdges();
+    deleteSelectedEdge();
   }
   if ((event.ctrlKey || event.metaKey) &&
   (event.key === 'a' || event.key === 'ф')) {
@@ -641,5 +642,28 @@ input[type="text"] {
 .vue-flow__edge-path {
   stroke: #555;
   stroke-width: 2;
+}
+
+/* styles for connection handles */
+.vue-flow__handle {
+  width: 10px;
+  height: 10px;
+  background-color: #555;
+}
+
+.vue-flow__handle-bottom {
+  bottom: -5px;
+}
+
+.vue-flow__handle-top {
+  top: -5px;
+}
+
+.vue-flow__handle-left {
+  left: -5px;
+}
+
+.vue-flow__handle-right {
+  right: -5px;
 }
 </style>
