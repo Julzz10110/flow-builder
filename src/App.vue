@@ -643,4 +643,27 @@ input[type="text"] {
   stroke: #555;
   stroke-width: 2;
 }
+
+/* styles for connection handles */
+.vue-flow__handle {
+  width: 10px;
+  height: 10px;
+  background-color: #555;
+}
+
+.vue-flow__handle-bottom {
+  bottom: -5px;
+}
+
+.vue-flow__handle-top {
+  top: -5px;
+}
+
+.vue-flow__handle-left {
+  left: -5px;
+}
+
+.vue-flow__handle-right {
+  right: -5px;
+}
 </style>
