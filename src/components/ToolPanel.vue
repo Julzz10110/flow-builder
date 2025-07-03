@@ -2,7 +2,7 @@
   <div class="tool-panel">
     <n-space justify="space-between" align="center" style="padding: 7px 17px">
 
-      <!-- Секция с настройками пайплайна -->
+      <!-- Flow Settings -->
       <n-space style="padding: 0 17px">
         <n-text style="color: #f2f2f2; font-size: 20px" strong>{{ flowName }}</n-text>
         
@@ -32,7 +32,7 @@
         </n-popover>
       </n-space>
 
-      <!-- Секция управления потоком -->
+      <!-- Flow Management Section -->
       <n-space>
         <n-button @click="$emit('add-node')" type="primary" circle>
           <template #icon>
@@ -82,7 +82,7 @@
         </n-button>
       </n-space>
 
-      <!-- Секция настроек шага -->
+      <!-- Node (step) Settings -->
       <n-space v-if="props.selectedNode && !isProtectedNode(props.selectedNode.id)">
         <n-input 
           type="text" 
@@ -102,7 +102,7 @@
         />
       </n-space>
 
-      <!-- Секция настроек связи -->
+      <!-- Edge Settings -->
       <n-space v-if="props.selectedEdge">
         <n-button @click="$emit('delete-selected-edge')" type="error" circle>
           <template #icon>
@@ -111,7 +111,7 @@
         </n-button>
       </n-space>
 
-      <!-- Секция DAGU -->
+      <!-- DAGU Section -->
       <n-space v-if="isGraphValid">
       <n-popover trigger="click" :show="showDaguYaml">
         <template #trigger>
@@ -145,7 +145,7 @@
         </n-button>
       </n-space>
 
-      <!-- Секция подсказок -->
+      <!-- Tips -->
       <n-space>
         <n-popover trigger="click" :show="showHints">
                 <template #trigger>
@@ -195,7 +195,7 @@ const {
   getEdges
 } = useVueFlow();
 
-// Иконки
+// icons
 const QuestionIcon = h(CustomIcon, { paths: pathsData['question']});
 const PlusIcon = h(CustomIcon, { paths: pathsData['plus']});
 const PlayIcon = h(CustomIcon, { paths: pathsData['play']});
@@ -319,7 +319,7 @@ const isProtectedNode = (nodeId: string) => {
   color: white;
   padding: 5px 0;
   border-radius: 8px;
-  margin-bottom: 15px;
+  margin-bottom: 0;
 }
 
 .settings-cards {

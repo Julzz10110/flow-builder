@@ -41,7 +41,6 @@ import { VueFlow, Position, useVueFlow, addEdge, Edge } from '@vue-flow/core';
 import '@vue-flow/core/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
 import { NLayoutContent } from 'naive-ui';
-// import { CheckOutlined } from '@vicons/antd';
 
 import ToolPanel from './ToolPanel.vue';
 import CustomNode from './types';
@@ -417,7 +416,6 @@ onMounted(() => {
   border-radius: 8px;
   overflow: hidden;
   outline: none;
-  margin-top: 20px;
 }
 
 .node-edit-form {
