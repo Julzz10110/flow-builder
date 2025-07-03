@@ -1,6 +1,37 @@
 <template>
   <div class="tool-panel">
     <n-space justify="space-between" align="center" style="padding: 7px 17px">
+
+      <!-- Секция с настройками пайплайна -->
+      <n-space style="padding: 0 17px">
+        <n-text style="color: #f2f2f2; font-size: 20px" strong>{{ flowName }}</n-text>
+        
+        <n-popover trigger="click">
+          <template #trigger>
+            <n-button text style="font-size: 18px" color="#c7c7c7">
+              <n-icon><edit-icon /></n-icon>
+            </n-button>
+          </template>
+          <n-card title="Настройки пайплайна" size="small" style="width: 300px">
+            <n-form>
+              <n-form-item label="Название" path="flowName">
+                <n-input 
+                  v-model:value="flowName" 
+                  placeholder="Введите название"
+                />
+              </n-form-item>
+              <n-form-item label="Описание" path="flowDescription">
+                <n-input 
+                  v-model:value="flowDescription" 
+                  placeholder="Введите описание"
+                  type="textarea"
+                />
+              </n-form-item>
+            </n-form>
+          </n-card>
+        </n-popover>
+      </n-space>
+
       <!-- Секция управления потоком -->
       <n-space>
         <n-button @click="$emit('add-node')" type="primary" circle>
@@ -136,25 +167,6 @@
       </n-space>
     </n-space>
 
-    <!-- Карточки с настройками -->
-    <div class="settings-cards">
-      <n-card title="Настройки пайплайна" size="small" hoverable>
-        <n-form>
-          <n-form-item label="Название" path="flowName">
-            <n-input 
-              v-model:value="flowName" 
-              placeholder="Введите название"
-            />
-          </n-form-item>
-          <n-form-item label="Описание" path="flowDescription">
-            <n-input 
-              v-model:value="flowDescription" 
-              placeholder="Введите описание"
-            />
-          </n-form-item>
-        </n-form>
-      </n-card>
-    </div>
   </div>
 </template>
 
@@ -192,6 +204,7 @@ const DeleteIcon = h(CustomIcon, { paths: pathsData['delete']});
 const RefreshIcon = h(CustomIcon, { paths: pathsData['refresh']});
 const CodeIcon = h(CustomIcon, { paths: pathsData['code']});
 const DownloadIcon = h(CustomIcon, { paths: pathsData['download']});
+const EditIcon = h(CustomIcon, { paths: pathsData['edit']});
 
 const props = defineProps({
   elements: {
