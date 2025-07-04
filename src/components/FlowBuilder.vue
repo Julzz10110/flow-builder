@@ -41,6 +41,7 @@
           @update:visible="showContextMenu = $event"
           @update-label="updateNodeLabel"
           @update-command="updateNodeCommand"
+          @update-params="updateNodeParams"
         />
         <NodeSelectionMenu
           v-if="showNodeMenu"
@@ -64,7 +65,7 @@ import { NLayoutContent } from 'naive-ui';
 import ToolPanel from './ToolPanel.vue';
 import NodeContextMenu from './NodeContextMenu.vue';
 import NodeSelectionMenu from './NodeSelectionMenu.vue';
-import CustomNode from './types';
+import CustomNode from '../types';
 
 const elements = ref<Array<CustomNode | Edge>>([
   { 
@@ -227,15 +228,19 @@ const showNodeSelectionMenu = (event?: MouseEvent) => {
 
 const addNode = (nodeData: { label: string, params: any[] }) => {
   const newNodeId = uuidv4();
+  
+  // Создаем объект параметров с default значениями
+  const params = nodeData.params.reduce((acc, param) => {
+    acc[param.name] = param.default !== undefined ? param.default : '';
+    return acc;
+  }, {} as Record<string, any>);
+
   const newNode: CustomNode = {
     id: newNodeId,
     data: { 
       label: nodeData.label,
       command: '',
-      params: nodeData.params.reduce((acc, param) => {
-        acc[param.name] = param.default || '';
-        return acc;
-      }, {}),
+      ...params, // Добавляем параметры в data ноды
       processFunction: async () => { 
         console.log(`Выполняется шаг ${newNodeId}`); 
         await delay(1000); 
@@ -252,6 +257,7 @@ const addNode = (nodeData: { label: string, params: any[] }) => {
       height: '80px'
     }
   };
+
   elements.value.push(newNode);
   addNodes([newNode]);
   showNodeMenu.value = false;
@@ -311,6 +317,7 @@ const onNodeContextMenu = (event: { event: MouseEvent, node: CustomNode }) => {
   
   showContextMenu.value = true;
   
+  console.log('Menu selectedNode.value:', selectedNode.value);
   console.log('Menu position:', contextMenuPosition.value);
 };
 
@@ -338,6 +345,20 @@ const updateNodeCommand = (newCommand: string) => {
     if (nodeIndex !== -1) {
       (elements.value[nodeIndex] as CustomNode).data.command = newCommand;
       updateNode(selectedNode.value.id, elements.value[nodeIndex]);
+    }
+  }
+};
+
+const updateNodeParams = (newParams: Record<string, any>) => {
+  if (selectedNode.value) {
+    const nodeIndex = elements.value.findIndex(el => el.id === selectedNode.value?.id);
+    if (nodeIndex !== -1) {
+      // Обновляем параметры в данных ноды
+      const node = elements.value[nodeIndex] as CustomNode;
+      Object.keys(newParams).forEach(key => {
+        node.data[key] = newParams[key];
+      });
+      updateNode(node.id, node);
     }
   }
 };

@@ -15,7 +15,7 @@
 <script setup lang="ts">
 import { computed, defineProps, defineEmits } from 'vue';
 import { NDropdown } from 'naive-ui';
-import nodesConfig from '../nodes_config.json';
+import nodesConfig from '../types/nodesConfig'
 
 const props = defineProps({
   show: Boolean,
@@ -59,4 +59,3 @@ const handleNodeSelect = (key: string, option: any) => {
   showMenu.value = false;
 };
 </script>
-[file content end]

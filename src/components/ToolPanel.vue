@@ -173,7 +173,7 @@ import {
 } from 'naive-ui';
 import { useVueFlow, Edge } from '@vue-flow/core';
 import YAML from 'yaml';
-import CustomNode from './types';
+import CustomNode from '../types';
 import { pathsData } from './icons';
 import CustomIcon from './icons/CustomIcon.vue';
 
