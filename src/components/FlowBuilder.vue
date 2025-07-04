@@ -7,7 +7,7 @@
         :is-stopped="isStopped"
         :selected-node="selectedNode"
         :selected-edge="selectedEdge"
-        @add-node="addNode"
+        @add-node="showNodeSelectionMenu"
         @start-flow="startFlow"
         @stop-flow="stopFlow"
         @continue-flow="continueFlow"
