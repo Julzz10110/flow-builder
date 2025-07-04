@@ -1,0 +1,46 @@
+{
+  "proc": [
+    {
+        "name": "comparison",
+        "params": [
+            {
+                "name": "propertyName",
+                "type": "string",
+                "requred": true
+            },
+            {
+                "name": "order",
+                "type": "string",
+                "enum": ["<", ">"],
+                "requred": true,
+                "default": "<"
+            }
+        ]
+    },
+    {
+        "name": "iterate",
+        "params": [
+            {
+                "name": "print",
+                "type": "boolean",
+                "default": true
+            }
+        ]
+    }
+  ],
+  "bx24": [
+    {
+        "name": "get_deals",
+        "params": []
+    },
+    {
+        "name": "get_deal_by_id",
+        "params": [
+            {
+                "name": "id",
+                "type": "string"
+            }
+        ]
+    }
+  ]
+}

@@ -33,15 +33,22 @@
         >
         </VueFlow>
         <NodeContextMenu
-              v-if="showContextMenu && contextMenuNode"
-              :node="contextMenuNode"
-              :visible="showContextMenu"
-              :x="contextMenuPosition.x"
-              :y="contextMenuPosition.y"
-              @update:visible="showContextMenu = $event"
-              @update-label="updateNodeLabel"
-              @update-command="updateNodeCommand"
-            />
+          v-if="showContextMenu && contextMenuNode"
+          :node="contextMenuNode"
+          :visible="showContextMenu"
+          :x="contextMenuPosition.x"
+          :y="contextMenuPosition.y"
+          @update:visible="showContextMenu = $event"
+          @update-label="updateNodeLabel"
+          @update-command="updateNodeCommand"
+        />
+        <NodeSelectionMenu
+          v-if="showNodeMenu"
+          :show="showNodeMenu"
+          :position="nodeMenuPosition"
+          @update:show="showNodeMenu = $event"
+          @select="addNode"
+        />
       </div>
     </n-layout-content>
   </div>
@@ -56,6 +63,7 @@ import { NLayoutContent } from 'naive-ui';
 
 import ToolPanel from './ToolPanel.vue';
 import NodeContextMenu from './NodeContextMenu.vue';
+import NodeSelectionMenu from './NodeSelectionMenu.vue';
 import CustomNode from './types';
 
 const elements = ref<Array<CustomNode | Edge>>([
@@ -110,9 +118,13 @@ const selectedNode = ref<CustomNode | null>(null);
 const selectedEdge = ref<Edge | null>(null);
 const connectionMode = ref(false);
 const flowWrapper = ref<HTMLElement | null>(null);
+
 const contextMenuNode = ref<CustomNode | null>(null);
 const showContextMenu = ref(false);
 const contextMenuPosition = ref({ x: 0, y: 0 })
+
+const showNodeMenu = ref(false);
+const nodeMenuPosition = ref({ x: 0, y: 0 });
 
 const stepCount = computed(() => {
   let count = 0;
@@ -157,7 +169,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
   if ((event.ctrlKey || event.metaKey) &&
   (event.key === 'a' || event.key === 'ф')) {
     event.preventDefault();
-    addNode();
+    showNodeSelectionMenu();
   }
 };
 
@@ -197,13 +209,33 @@ const deleteSelectedNodeWithEdges = () => {
   console.log('Удаление завершено, текущие элементы:', elements.value);
 };
 
-const addNode = () => {
+const showNodeSelectionMenu = (event?: MouseEvent) => {
+  if (event) {
+    nodeMenuPosition.value = {
+      x: event.clientX,
+      y: event.clientY
+    };
+  } else {
+  // If the event is not passed (for example, when called via Ctrl+A),
+  // position the menu in the center of the screen
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    nodeMenuPosition.value = { x: centerX, y: centerY };
+  }
+  showNodeMenu.value = true;
+};
+
+const addNode = (nodeData: { label: string, params: any[] }) => {
   const newNodeId = uuidv4();
   const newNode: CustomNode = {
     id: newNodeId,
     data: { 
-      label: `Шаг ${stepCount.value + 1}`, 
+      label: nodeData.label,
       command: '',
+      params: nodeData.params.reduce((acc, param) => {
+        acc[param.name] = param.default || '';
+        return acc;
+      }, {}),
       processFunction: async () => { 
         console.log(`Выполняется шаг ${newNodeId}`); 
         await delay(1000); 
@@ -222,6 +254,7 @@ const addNode = () => {
   };
   elements.value.push(newNode);
   addNodes([newNode]);
+  showNodeMenu.value = false;
 };
 
 const onConnect = (params: any) => {
@@ -267,7 +300,7 @@ const onNodeContextMenu = (event: { event: MouseEvent, node: CustomNode }) => {
   selectedNode.value = event.node;
   contextMenuNode.value = event.node;
   
-  // Получаем позицию относительно контейнера VueFlow
+  // get the position relative to the VueFlow container
   const flowWrapperRect = flowWrapper.value?.getBoundingClientRect();
   if (!flowWrapperRect) return;
   
@@ -328,7 +361,8 @@ const updateStepNumbers = () => {
     
     const node = elements.value.find(n => n.id === nextNode) as CustomNode;
     if (node && !isProtectedNode(node.id)) {
-      node.data.label = `Шаг ${stepNumber}`;
+      console.log('TEST stepNumber:', stepNumber)
+      // node.data.label = `Шаг ${stepNumber}`;
       updateNode(node.id, node);
       stepNumber++;
     }
