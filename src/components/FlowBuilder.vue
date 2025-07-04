@@ -24,12 +24,24 @@
           @node-click="onNodeClick"
           @edge-click="onEdgeClick"
           @update-edge="onUpdateEdge"
-          @edgeContextMenu="onEdgeContextMenu"
+          @nodeContextMenu="onNodeContextMenu"
+          @pane-click="onPaneClick"
           :connection-mode="connectionMode"
           @connect="onConnect"
           @pane-ready="onPaneReady"
           :node-class="nodeClass"
-        />
+        >
+        </VueFlow>
+        <NodeContextMenu
+              v-if="showContextMenu && contextMenuNode"
+              :node="contextMenuNode"
+              :visible="showContextMenu"
+              :x="contextMenuPosition.x"
+              :y="contextMenuPosition.y"
+              @update:visible="showContextMenu = $event"
+              @update-label="updateNodeLabel"
+              @update-command="updateNodeCommand"
+            />
       </div>
     </n-layout-content>
   </div>
@@ -43,6 +55,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { NLayoutContent } from 'naive-ui';
 
 import ToolPanel from './ToolPanel.vue';
+import NodeContextMenu from './NodeContextMenu.vue';
 import CustomNode from './types';
 
 const elements = ref<Array<CustomNode | Edge>>([
@@ -97,12 +110,9 @@ const selectedNode = ref<CustomNode | null>(null);
 const selectedEdge = ref<Edge | null>(null);
 const connectionMode = ref(false);
 const flowWrapper = ref<HTMLElement | null>(null);
-const showNodeModal = ref(false);
-const editingNode = ref<CustomNode>({
-  id: '',
-  data: { label: '', command: '', processFunction: async () => {} },
-  position: { x: 0, y: 0 }
-});
+const contextMenuNode = ref<CustomNode | null>(null);
+const showContextMenu = ref(false);
+const contextMenuPosition = ref({ x: 0, y: 0 })
 
 const stepCount = computed(() => {
   let count = 0;
@@ -181,7 +191,7 @@ const deleteSelectedNodeWithEdges = () => {
   );
   
   selectedNode.value = null;
-  showNodeModal.value = false;
+  closeContextMenu();
   updateStepNumbers();
   
   console.log('Удаление завершено, текущие элементы:', elements.value);
@@ -230,61 +240,71 @@ const onNodeClick = (event: any) => {
   if (isProtectedNode(event.node.id)) {
     selectedNode.value = null;
     selectedEdge.value = null;
-    showNodeModal.value = false;
+    closeContextMenu();
     return;
   }
   selectedNode.value = event.node;
   selectedEdge.value = null;
-  editingNode.value = JSON.parse(JSON.stringify(event.node));
-  showNodeModal.value = true;
+  closeContextMenu();
 };
 
 const onEdgeClick = (event: any) => {
   console.log('Edge click event', event)
   selectedNode.value = null;
   selectedEdge.value = event.edge;
-  showNodeModal.value = false;
-};
-
-const onEdgeContextMenu = (event: any, edge: Edge) => {
-  console.log('TEST edge', edge)
-  event.preventDefault();
+  closeContextMenu();
 };
 
 const onUpdateEdge = (event: any, edge: Edge) => {
   console.log('onUpdateEdge', edge);
 }
 
-const updateNodeLabel = () => {
-  if (editingNode.value && !isProtectedNode(editingNode.value.id)) {
-    const nodeIndex = elements.value.findIndex(el => el.id === editingNode.value.id);
+const onNodeContextMenu = (event: { event: MouseEvent, node: CustomNode }) => {
+  if (!event?.node || isProtectedNode(event.node.id)) return;
+  
+  event.event.preventDefault();
+  
+  selectedNode.value = event.node;
+  contextMenuNode.value = event.node;
+  
+  // Получаем позицию относительно контейнера VueFlow
+  const flowWrapperRect = flowWrapper.value?.getBoundingClientRect();
+  if (!flowWrapperRect) return;
+  
+  contextMenuPosition.value = {
+    x: event.event.clientX - flowWrapperRect.left,
+    y: event.event.clientY - flowWrapperRect.top
+  };
+  
+  showContextMenu.value = true;
+  
+  console.log('Menu position:', contextMenuPosition.value);
+};
+
+const onPaneClick = () => {
+  closeContextMenu();
+};
+
+const closeContextMenu = () => {
+  contextMenuNode.value = null;
+};
+
+const updateNodeLabel = (newLabel: string) => {
+  if (selectedNode.value && !isProtectedNode(selectedNode.value.id)) {
+    const nodeIndex = elements.value.findIndex(el => el.id === selectedNode.value?.id);
     if (nodeIndex !== -1) {
-      elements.value[nodeIndex] = {
-        ...elements.value[nodeIndex],
-        data: {
-          ...(elements.value[nodeIndex] as CustomNode).data,
-          label: editingNode.value.data.label
-        }
-      };
-      updateNode(editingNode.value.id, elements.value[nodeIndex]);
-      selectedNode.value = elements.value[nodeIndex] as CustomNode;
+      (elements.value[nodeIndex] as CustomNode).data.label = newLabel;
+      updateNode(selectedNode.value.id, elements.value[nodeIndex]);
     }
   }
 };
 
-const updateNodeCommand = () => {
-  if (editingNode.value && !isProtectedNode(editingNode.value.id)) {
-    const nodeIndex = elements.value.findIndex(el => el.id === editingNode.value.id);
+const updateNodeCommand = (newCommand: string) => {
+  if (selectedNode.value && !isProtectedNode(selectedNode.value.id)) {
+    const nodeIndex = elements.value.findIndex(el => el.id === selectedNode.value?.id);
     if (nodeIndex !== -1) {
-      elements.value[nodeIndex] = {
-        ...elements.value[nodeIndex],
-        data: {
-          ...(elements.value[nodeIndex] as CustomNode).data,
-          command: editingNode.value.data.command
-        }
-      };
-      updateNode(editingNode.value.id, elements.value[nodeIndex]);
-      selectedNode.value = elements.value[nodeIndex] as CustomNode;
+      (elements.value[nodeIndex] as CustomNode).data.command = newCommand;
+      updateNode(selectedNode.value.id, elements.value[nodeIndex]);
     }
   }
 };
@@ -416,6 +436,13 @@ onMounted(() => {
   border-radius: 8px;
   overflow: hidden;
   outline: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.node-context-menu {
+  position: absolute;
 }
 
 .node-edit-form {

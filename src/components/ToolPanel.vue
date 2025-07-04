@@ -82,26 +82,6 @@
         </n-button>
       </n-space>
 
-      <!-- Node (step) Settings -->
-      <n-space v-if="props.selectedNode && !isProtectedNode(props.selectedNode.id)">
-        <n-input 
-          type="text" 
-          :value="props.selectedNode.data.label" 
-          @update:value="$emit('update-node-label', $event)" 
-          placeholder="Название шага"
-          size="small"
-          style="width: 150px"
-        />
-        <n-input 
-          type="text" 
-          :value="props.selectedNode.data.command" 
-          @update:value="$emit('update-node-command', $event)" 
-          placeholder="Команда"
-          size="small"
-          style="width: 200px"
-        />
-      </n-space>
-
       <!-- Edge Settings -->
       <n-space v-if="props.selectedEdge">
         <n-button @click="$emit('delete-selected-edge')" type="error" circle>
@@ -156,6 +136,12 @@
                   </n-button>
                 </template>
                 <n-list>
+                  <n-list-item>
+                    <n-text><strong>ЛКМ</strong> - Выбрать шаг</n-text>
+                  </n-list-item>
+                  <n-list-item>
+                    <n-text><strong>ПКМ</strong> - Редактировать параметры шага</n-text>
+                  </n-list-item>
                   <n-list-item>
                     <n-text><strong>Ctrl+A</strong> - Добавить новый шаг</n-text>
                   </n-list-item>
