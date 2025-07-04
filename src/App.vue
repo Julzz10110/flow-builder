@@ -4,9 +4,11 @@
       <n-h1 style="margin: 0">Flow Builder</n-h1>
     </n-space>
   </n-layout-header> -->
-  <n-message-provider>
-    <FlowBuilder />
-  </n-message-provider>
+  <n-config-provider :hljs="hljs">
+    <n-message-provider>
+      <FlowBuilder />
+    </n-message-provider>
+  </n-config-provider>
 </template>
 
 <script setup lang="ts">
@@ -17,4 +19,8 @@ import {
 } from 'naive-ui';
   import FlowBuilder from './components/FlowBuilder.vue';
 
+  import hljs from 'highlight.js/lib/core'
+  import javascript from 'highlight.js/lib/languages/javascript'
+
+  hljs.registerLanguage('javascript', javascript);
 </script>

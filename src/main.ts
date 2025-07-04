@@ -1,10 +1,10 @@
-import { createApp } from 'vue'
-import App from './App.vue'
+import { createApp } from 'vue';
+import App from './App.vue';
 import clickOutside from './directives/clickOutside';
-import naive from 'naive-ui'
+import naive from 'naive-ui';
 
-const app = createApp(App)
+const app = createApp(App);
 app.directive('click-outside', clickOutside);
 app.use(naive)
 
-app.mount('#app')
+app.mount('#app');
