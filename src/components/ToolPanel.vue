@@ -60,16 +60,6 @@
           </template>
         </n-button>
 
-        <!-- <n-button 
-          v-if="props.isStopped" 
-          @click="$emit('continue-flow')"
-          type="info"
-          circle
-        >
-          <template #icon>
-            <n-icon><play-icon /></n-icon>
-          </template>
-        </n-button> -->
         <n-button 
           v-if="props.isStopped" 
           @click="$emit('reset-flow')"
@@ -91,25 +81,26 @@
         </n-button>
       </n-space>
 
-      <!-- DAGU Section -->
+      <!-- Export Section -->
       <n-space v-if="isGraphValid">
-      <n-popover trigger="click" :show="showDaguYaml">
-        <template #trigger>
-          <n-button @click="generateDAGUYaml(); showDaguYaml = !showDaguYaml" ghost color="#c7c7c7" size="small">
-            <template #icon>
-              <n-icon><code-icon /></n-icon>
-            </template>
-            YAML
-          </n-button>
-        </template>
+        <!-- YAML Export -->
+        <n-popover trigger="click" :show="showDaguYaml">
+          <template #trigger>
+            <n-button @click="generateDAGUYaml(); showDaguYaml = !showDaguYaml" ghost color="#c7c7c7" size="small">
+              <template #icon>
+                <n-icon><code-icon /></n-icon>
+              </template>
+              YAML
+            </n-button>
+          </template>
           <n-card 
-          v-if="isGraphValid && daguYaml" 
-          title="Конфигурация DAGU" 
-          size="small" 
-        >
-          <n-code language="yaml" :code="daguYaml" word-wrap/>
-      </n-card>
-      </n-popover>
+            v-if="isGraphValid && daguYaml" 
+            title="Конфигурация DAGU" 
+            size="small" 
+          >
+            <n-code language="yaml" :code="daguYaml" word-wrap/>
+          </n-card>
+        </n-popover>
 
         <n-button 
           @click="downloadDAGUYaml" 
@@ -121,38 +112,69 @@
           <template #icon>
             <n-icon><download-icon /></n-icon>
           </template>
-          Экспорт
+          Экспорт YAML
+        </n-button>
+
+        <!-- JSON Export -->
+        <n-popover trigger="click" :show="showPipelineJson">
+          <template #trigger>
+            <n-button @click="generatePipelineJson(); showPipelineJson = !showPipelineJson" ghost color="#c7c7c7" size="small">
+              <template #icon>
+                <n-icon><code-icon /></n-icon>
+              </template>
+              JSON
+            </n-button>
+          </template>
+          <n-card 
+            v-if="isGraphValid && pipelineJson" 
+            title="Конфигурация пайплайна" 
+            size="small" 
+          >
+            <n-code language="json" :code="pipelineJson" word-wrap/>
+          </n-card>
+        </n-popover>
+
+        <n-button 
+          @click="downloadPipelineJson" 
+          :disabled="!pipelineJson" 
+          size="small"
+          ghost
+          color="#c7c7c7"
+        >
+          <template #icon>
+            <n-icon><download-icon /></n-icon>
+          </template>
+          Экспорт JSON
         </n-button>
       </n-space>
 
       <!-- Tips -->
       <n-space>
         <n-popover trigger="click" :show="showHints">
-                <template #trigger>
-                  <n-button @click="showHints = !showHints" ghost color="#c7c7c7" circle>
-                    <template #icon>
-                      <n-icon><question-icon /></n-icon>
-                    </template>
-                  </n-button>
-                </template>
-                <n-list>
-                  <n-list-item>
-                    <n-text><strong>ЛКМ</strong> - Выбрать шаг</n-text>
-                  </n-list-item>
-                  <n-list-item>
-                    <n-text><strong>ПКМ</strong> - Редактировать параметры шага</n-text>
-                  </n-list-item>
-                  <n-list-item>
-                    <n-text><strong>Ctrl+A</strong> - Добавить новый шаг</n-text>
-                  </n-list-item>
-                  <n-list-item>
-                    <n-text><strong>Ctrl+X</strong> - Удалить выбранный шаг или связь</n-text>
-                  </n-list-item>
-                </n-list>
-              </n-popover>
+          <template #trigger>
+            <n-button @click="showHints = !showHints" ghost color="#c7c7c7" circle>
+              <template #icon>
+                <n-icon><question-icon /></n-icon>
+              </template>
+            </n-button>
+          </template>
+          <n-list>
+            <n-list-item>
+              <n-text><strong>ЛКМ</strong> - Выбрать шаг</n-text>
+            </n-list-item>
+            <n-list-item>
+              <n-text><strong>ПКМ</strong> - Редактировать параметры шага</n-text>
+            </n-list-item>
+            <n-list-item>
+              <n-text><strong>Ctrl+A</strong> - Добавить новый шаг</n-text>
+            </n-list-item>
+            <n-list-item>
+              <n-text><strong>Ctrl+X</strong> - Удалить выбранный шаг или связь</n-text>
+            </n-list-item>
+          </n-list>
+        </n-popover>
       </n-space>
     </n-space>
-
   </div>
 </template>
 
@@ -169,11 +191,13 @@ import {
   NCard,
   NForm,
   NFormItem,
-  NCode
+  NCode,
+  NText
 } from 'naive-ui';
 import { useVueFlow, Edge } from '@vue-flow/core';
 import YAML from 'yaml';
 import CustomNode from '../types';
+import config from '../types/nodesConfig'
 import { pathsData } from './icons';
 import CustomIcon from './icons/CustomIcon.vue';
 
@@ -206,6 +230,8 @@ const props = defineProps({
 const flowName = ref('my_flow');
 const flowDescription = ref('My flow\'s desciption.');
 const daguYaml = ref('');
+const pipelineJson = ref('');
+const showPipelineJson = ref(false);
 
 const isGraphValid = computed(() => {
   const visited = new Set<string>();
@@ -227,7 +253,6 @@ const isGraphValid = computed(() => {
   
   return currentNode === 'end';
 });
-
 
 const getNextNode = (nodeId: string): string | null => {
   const edges = props.elements.filter((el: any) => el.source === nodeId && el.target) as Edge[];
@@ -261,6 +286,50 @@ const generateDAGUYaml = () => {
   daguYaml.value = YAML.stringify(daguConfig);
 };
 
+const generatePipelineJson = () => {
+  const steps = [];
+  let currentNode = 'start';
+  
+  while (currentNode !== 'end') {
+    const nextNode = getNextNode(currentNode);
+    if (!nextNode || nextNode === 'end') break;
+    
+    const node = props.elements.find(n => n.id === nextNode) as CustomNode;
+    if (node && !isProtectedNode(node.id)) {
+      const step: any = {
+        name: node.data.label,
+        command: node.data.command,
+        type: node.data.label.split('_')[0]
+      };
+
+      // add params form nodesConfig
+      const nodeType = node.data.label.split('_')[0];
+      const operationName = node.data.label.split('_')[1];
+      const nodeConfig = config[nodeType]?.find(n => n.name === operationName);
+      
+      if (nodeConfig) {
+        step.params = {};
+        nodeConfig.params.forEach(param => {
+          if (node.data[param.name] !== undefined) {
+            step.params[param.name] = node.data[param.name];
+          }
+        });
+      }
+      
+      steps.push(step);
+    }
+    currentNode = nextNode;
+  }
+  
+  const pipelineConfig = {
+    name: flowName.value,
+    description: flowDescription.value,
+    steps: steps
+  };
+  
+  pipelineJson.value = JSON.stringify(pipelineConfig, null, 2);
+};
+
 const downloadDAGUYaml = () => {
   if (!daguYaml.value) return;
   
@@ -275,24 +344,22 @@ const downloadDAGUYaml = () => {
   URL.revokeObjectURL(url);
 };
 
-/*
-const emit = defineEmits([
-  'add-node',
-  'start-flow',
-  'stop-flow',
-  'continue-flow',
-  'reset-flow',
-  'update-node-label',
-  'update-node-command',
-  'delete-selected-edge',
-  'generate-dagu-yaml',
-  'download-dagu-yaml'
-]);
-*/
+const downloadPipelineJson = () => {
+  if (!pipelineJson.value) return;
+  
+  const blob = new Blob([pipelineJson.value], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${flowName.value}.json`.replace(/\s+/g, '_');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 
 const showHints = ref(false);
 const showDaguYaml = ref(false);
-// const showSettingsCards = ref(false);
 
 const isProtectedNode = (nodeId: string) => {
   return nodeId === 'start' || nodeId === 'end';
