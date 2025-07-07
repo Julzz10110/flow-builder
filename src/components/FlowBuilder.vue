@@ -15,6 +15,7 @@
         @update-node-label="updateNodeLabel"
         @update-node-command="updateNodeCommand"
         @delete-selected-edge="deleteSelectedEdge"
+        @import-json="importJsonConfig"
       />
 
       <div class="flow-wrapper" ref="flowWrapper">
@@ -56,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { VueFlow, Position, useVueFlow, addEdge, Edge } from '@vue-flow/core';
 import '@vue-flow/core/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
@@ -66,6 +67,7 @@ import ToolPanel from './ToolPanel.vue';
 import NodeContextMenu from './NodeContextMenu.vue';
 import NodeSelectionMenu from './NodeSelectionMenu.vue';
 import CustomNode from '../types';
+import config from '../types/nodesConfig';
 
 const elements = ref<Array<CustomNode | Edge>>([
   { 
@@ -109,7 +111,10 @@ const {
   addNodes, 
   updateNode, 
   removeNodes,
-  getEdges
+  getEdges,
+  setNodes,
+  setEdges,
+  fitView
 } = useVueFlow();
 
 const isRunning = ref(false);
@@ -122,7 +127,7 @@ const flowWrapper = ref<HTMLElement | null>(null);
 
 const contextMenuNode = ref<CustomNode | null>(null);
 const showContextMenu = ref(false);
-const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuPosition = ref({ x: 0, y: 0 });
 
 const showNodeMenu = ref(false);
 const nodeMenuPosition = ref({ x: 0, y: 0 });
@@ -180,24 +185,16 @@ const deleteSelectedNodeWithEdges = () => {
     return;
   }
 
-  console.log('Удаление ноды:', selectedNode.value.id);
-  
   const nodeId = selectedNode.value.id;
-  
   const edgesToRemove = getEdges.value.filter(
     edge => edge.source === nodeId || edge.target === nodeId
   );
-  
-  console.log('Связанные edges для удаления:', edgesToRemove);
 
   if (edgesToRemove.length > 0) {
-    console.log('Удаление edges');
     removeEdges(edgesToRemove);
   }
   
-  console.log('Удаление ноды');
   removeNodes([nodeId]);
-  
   elements.value = elements.value.filter(
     el => el.id !== nodeId && 
     !edgesToRemove.some(edge => edge.id === el.id)
@@ -206,8 +203,6 @@ const deleteSelectedNodeWithEdges = () => {
   selectedNode.value = null;
   closeContextMenu();
   updateStepNumbers();
-  
-  console.log('Удаление завершено, текущие элементы:', elements.value);
 };
 
 const showNodeSelectionMenu = (event?: MouseEvent) => {
@@ -217,8 +212,6 @@ const showNodeSelectionMenu = (event?: MouseEvent) => {
       y: event.clientY
     };
   } else {
-  // If the event is not passed (for example, when called via Ctrl+A),
-  // position the menu in the center of the screen
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight / 2;
     nodeMenuPosition.value = { x: centerX, y: centerY };
@@ -229,7 +222,6 @@ const showNodeSelectionMenu = (event?: MouseEvent) => {
 const addNode = (nodeData: { label: string, params: any[] }) => {
   const newNodeId = uuidv4();
   
-  // Создаем объект параметров с default значениями
   const params = nodeData.params.reduce((acc, param) => {
     acc[param.name] = param.default !== undefined ? param.default : '';
     return acc;
@@ -240,7 +232,7 @@ const addNode = (nodeData: { label: string, params: any[] }) => {
     data: { 
       label: nodeData.label,
       command: '',
-      ...params, // Добавляем параметры в data ноды
+      ...params,
       processFunction: async () => { 
         console.log(`Выполняется шаг ${newNodeId}`); 
         await delay(1000); 
@@ -288,7 +280,6 @@ const onNodeClick = (event: any) => {
 };
 
 const onEdgeClick = (event: any) => {
-  console.log('Edge click event', event)
   selectedNode.value = null;
   selectedEdge.value = event.edge;
   closeContextMenu();
@@ -306,7 +297,6 @@ const onNodeContextMenu = (event: { event: MouseEvent, node: CustomNode }) => {
   selectedNode.value = event.node;
   contextMenuNode.value = event.node;
   
-  // get the position relative to the VueFlow container
   const flowWrapperRect = flowWrapper.value?.getBoundingClientRect();
   if (!flowWrapperRect) return;
   
@@ -316,9 +306,6 @@ const onNodeContextMenu = (event: { event: MouseEvent, node: CustomNode }) => {
   };
   
   showContextMenu.value = true;
-  
-  console.log('Menu selectedNode.value:', selectedNode.value);
-  console.log('Menu position:', contextMenuPosition.value);
 };
 
 const onPaneClick = () => {
@@ -353,7 +340,6 @@ const updateNodeParams = (newParams: Record<string, any>) => {
   if (selectedNode.value) {
     const nodeIndex = elements.value.findIndex(el => el.id === selectedNode.value?.id);
     if (nodeIndex !== -1) {
-      // Обновляем параметры в данных ноды
       const node = elements.value[nodeIndex] as CustomNode;
       Object.keys(newParams).forEach(key => {
         node.data[key] = newParams[key];
@@ -373,7 +359,7 @@ const deleteSelectedEdge = () => {
 }
 
 const updateStepNumbers = () => {
-  let stepNumber = 1;
+  // let stepNumber = 1;
   let currentNode = 'start';
   
   while (currentNode !== 'end') {
@@ -382,13 +368,135 @@ const updateStepNumbers = () => {
     
     const node = elements.value.find(n => n.id === nextNode) as CustomNode;
     if (node && !isProtectedNode(node.id)) {
-      console.log('TEST stepNumber:', stepNumber)
-      // node.data.label = `Шаг ${stepNumber}`;
       updateNode(node.id, node);
-      stepNumber++;
+      // stepNumber++;
     }
     
     currentNode = nextNode;
+  }
+};
+
+const importJsonConfig = (jsonConfig: any) => {
+  try {
+    // guard expression
+    if (!jsonConfig?.steps || !Array.isArray(jsonConfig.steps)) {
+      throw new Error('Invalid configuration: missing steps array');
+    }
+
+    const newNodes: CustomNode[] = [];
+    const newEdges: Edge[] = [];
+    let xPos = 50;
+    const yPos = 150;
+
+    // start node
+    newNodes.push({
+      id: 'start',
+      type: 'input',
+      data: { label: 'start', command: '', processFunction: async () => await delay(1000) },
+      position: { x: xPos, y: 50 },
+      sourcePosition: Position.Bottom,
+      style: { 
+        backgroundColor: '#d0d0d0',
+        color: 'black',
+        borderRadius: '10px',
+        width: '120px',
+        height: '60px'
+      },
+      draggable: true,
+      selectable: true,
+      deletable: false
+    });
+    xPos += 200;
+
+    // steps processing
+    jsonConfig.steps.forEach((step: any) => {
+      const nodeId = uuidv4();
+      const [nodeType, operationName] = step.name.split('_');
+      
+      const nodeData: any = {
+        label: step.name,
+        command: step.command || '',
+        processFunction: async () => await delay(1000)
+      };
+
+      const nodeConfig = config[nodeType]?.find(n => n.name === operationName);
+      if (nodeConfig) {
+        nodeConfig.params.forEach(param => {
+          nodeData[param.name] = step.params?.[param.name] ?? param.default;
+        });
+      }
+
+      // add node
+      newNodes.push({
+        id: nodeId,
+        data: nodeData,
+        position: { x: xPos, y: yPos },
+        targetPosition: Position.Top,
+        sourcePosition: Position.Bottom,
+        style: { 
+          backgroundColor: '#2196F3',
+          color: 'white',
+          borderRadius: '50%',
+          width: '80px',
+          height: '80px'
+        },
+        draggable: true,
+        selectable: true,
+        deletable: true
+      });
+
+      // add edge
+      if (newNodes.length > 1) {
+        const prevNode = newNodes[newNodes.length-2];
+        newEdges.push({
+          id: `edge-${prevNode.id}-${nodeId}`,
+          source: prevNode.id,
+          target: nodeId,
+        });
+      }
+
+      xPos += 200;
+    });
+
+    // end node
+    newNodes.push({
+      id: 'end',
+      type: 'output',
+      data: { label: 'end', command: '', processFunction: async () => await delay(1000) },
+      position: { x: xPos, y: 50 },
+      sourcePosition: Position.Top,
+      style: { 
+        backgroundColor: '#454545',
+        color: 'white',
+        borderRadius: '10px',
+        width: '120px',
+        height: '60px'
+      },
+      draggable: true,
+      selectable: true,
+      deletable: false
+    });
+
+    // linking the last node to end
+    if (newNodes.length > 2) {
+      const lastStepNode = newNodes[newNodes.length-2];
+      newEdges.push({
+        id: `edge-${lastStepNode.id}-end`,
+        source: lastStepNode.id,
+        target: 'end',
+      });
+    }
+
+    // graph update
+    elements.value = [...newNodes, ...newEdges];
+    setNodes(newNodes);
+    setEdges(newEdges);
+
+    // auto-scaling
+    nextTick(() => fitView({ padding: 0.5 }));
+
+  } catch (error) {
+    console.error('Graph import error:', error);
   }
 };
 
@@ -460,10 +568,8 @@ const resetFlow = () => {
 
 const executeStep = async (nodeId: string) => {
   const node = elements.value.find((el: any) => el.id === nodeId) as CustomNode;
-  if (node && node.data && node.data.processFunction) {
-    console.log(`Запуск шага: ${node.data.label}`);
+  if (node?.data?.processFunction) {
     await node.data.processFunction();
-    console.log(`Шаг завершен: ${node.data.label}`);
   }
 };
 
@@ -544,7 +650,6 @@ onMounted(() => {
   stroke-width: 2;
 }
 
-/* styles for connection handles */
 .vue-flow__handle {
   width: 10px;
   height: 7px;

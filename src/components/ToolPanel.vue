@@ -1,11 +1,9 @@
 <template>
   <div class="tool-panel">
     <n-space justify="space-between" align="center" style="padding: 7px 17px">
-
       <!-- Flow Settings -->
       <n-space style="padding: 0 17px">
         <n-text style="color: #f2f2f2; font-size: 20px" strong>{{ flowName }}</n-text>
-        
         <n-popover trigger="click">
           <template #trigger>
             <n-button text style="font-size: 18px" color="#c7c7c7">
@@ -32,7 +30,7 @@
         </n-popover>
       </n-space>
 
-      <!-- Flow Management Section -->
+      <!-- Flow Management -->
       <n-space>
         <n-button @click="$emit('add-node')" type="primary" circle>
           <template #icon>
@@ -59,7 +57,6 @@
             <n-icon><pause-icon /></n-icon>
           </template>
         </n-button>
-
         <n-button 
           v-if="props.isStopped" 
           @click="$emit('reset-flow')"
@@ -81,70 +78,71 @@
         </n-button>
       </n-space>
 
-      <!-- Export Section -->
-      <n-space v-if="isGraphValid">
-        <!-- YAML Export -->
-        <n-popover trigger="click" :show="showDaguYaml">
-          <template #trigger>
-            <n-button @click="generateDAGUYaml(); showDaguYaml = !showDaguYaml" ghost color="#c7c7c7" size="small">
-              <template #icon>
-                <n-icon><code-icon /></n-icon>
-              </template>
-              YAML
-            </n-button>
-          </template>
-          <n-card 
-            v-if="isGraphValid && daguYaml" 
-            title="Конфигурация DAGU" 
-            size="small" 
-          >
-            <n-code language="yaml" :code="daguYaml" word-wrap/>
-          </n-card>
-        </n-popover>
+      <!-- Export/Import -->
+      <n-space>
+        <!-- Export Buttons -->
+        <template v-if="isGraphValid">
+          <n-popover trigger="click" :show="showDaguYaml">
+            <template #trigger>
+              <n-button @click="generateDAGUYaml(); showDaguYaml = !showDaguYaml" ghost color="#c7c7c7" size="small">
+                <template #icon>
+                  <n-icon><code-icon /></n-icon>
+                </template>
+                YAML
+              </n-button>
+            </template>
+            <n-card v-if="daguYaml" title="DAGU Config" size="small">
+              <n-code language="yaml" :code="daguYaml" word-wrap/>
+            </n-card>
+          </n-popover>
 
+          <n-button @click="downloadDAGUYaml()" size="small" ghost color="#c7c7c7">
+            <template #icon>
+              <n-icon><download-icon /></n-icon>
+            </template>
+            Export YAML
+          </n-button>
+
+          <n-popover trigger="click" :show="showPipelineJson">
+            <template #trigger>
+              <n-button @click="generatePipelineJson(); showPipelineJson = !showPipelineJson" ghost color="#c7c7c7" size="small">
+                <template #icon>
+                  <n-icon><code-icon /></n-icon>
+                </template>
+                JSON
+              </n-button>
+            </template>
+            <n-card v-if="pipelineJson" title="Конфигурация JSON" size="small">
+              <n-code language="json" :code="pipelineJson" word-wrap/>
+            </n-card>
+          </n-popover>
+
+          <n-button @click="downloadPipelineJson()" size="small" ghost color="#c7c7c7">
+            <template #icon>
+              <n-icon><download-icon /></n-icon>
+            </template>
+            Export JSON
+          </n-button>
+        </template>
+
+        <!-- Import Button -->
+        <input 
+          type="file" 
+          ref="fileInput"
+          accept=".json"
+          style="display: none"
+          @change="handleFileSelect"
+        >
         <n-button 
-          @click="downloadDAGUYaml" 
-          :disabled="!daguYaml" 
+          @click="triggerFileInput()" 
+          ghost 
+          color="#c7c7c7" 
           size="small"
-          ghost
-          color="#c7c7c7"
         >
           <template #icon>
-            <n-icon><download-icon /></n-icon>
+            <n-icon><upload-icon /></n-icon>
           </template>
-          Экспорт YAML
-        </n-button>
-
-        <!-- JSON Export -->
-        <n-popover trigger="click" :show="showPipelineJson">
-          <template #trigger>
-            <n-button @click="generatePipelineJson(); showPipelineJson = !showPipelineJson" ghost color="#c7c7c7" size="small">
-              <template #icon>
-                <n-icon><code-icon /></n-icon>
-              </template>
-              JSON
-            </n-button>
-          </template>
-          <n-card 
-            v-if="isGraphValid && pipelineJson" 
-            title="Конфигурация пайплайна" 
-            size="small" 
-          >
-            <n-code language="json" :code="pipelineJson" word-wrap/>
-          </n-card>
-        </n-popover>
-
-        <n-button 
-          @click="downloadPipelineJson" 
-          :disabled="!pipelineJson" 
-          size="small"
-          ghost
-          color="#c7c7c7"
-        >
-          <template #icon>
-            <n-icon><download-icon /></n-icon>
-          </template>
-          Экспорт JSON
+          Import JSON
         </n-button>
       </n-space>
 
@@ -179,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, computed, h } from 'vue';
+import { ref, defineProps, defineEmits, computed, h } from 'vue';
 import {
   NButton,
   NIcon,
@@ -192,29 +190,44 @@ import {
   NForm,
   NFormItem,
   NCode,
-  NText
+  NText,
+  // NUpload,
+  useMessage
 } from 'naive-ui';
 import { useVueFlow, Edge } from '@vue-flow/core';
 import YAML from 'yaml';
 import CustomNode from '../types';
-import config from '../types/nodesConfig'
+import config from '../types/nodesConfig';
 import { pathsData } from './icons';
 import CustomIcon from './icons/CustomIcon.vue';
 
 const {
-  getEdges
+  getEdges,
+  // addEdges,
+  // setNodes,
+  // setEdges
 } = useVueFlow();
 
+const message = useMessage();
+const fileInput = ref<HTMLInputElement | null>(null);
+
+// create icon
+const createIcon = (iconName: string) => {
+  const iconPaths = pathsData?.[iconName];
+  return iconPaths ? h(CustomIcon, { paths: iconPaths }) : null;
+};
+
 // icons
-const QuestionIcon = h(CustomIcon, { paths: pathsData['question']});
-const PlusIcon = h(CustomIcon, { paths: pathsData['plus']});
-const PlayIcon = h(CustomIcon, { paths: pathsData['play']});
-const PauseIcon = h(CustomIcon, { paths: pathsData['pause']});
-const DeleteIcon = h(CustomIcon, { paths: pathsData['delete']});
-const RefreshIcon = h(CustomIcon, { paths: pathsData['refresh']});
-const CodeIcon = h(CustomIcon, { paths: pathsData['code']});
-const DownloadIcon = h(CustomIcon, { paths: pathsData['download']});
-const EditIcon = h(CustomIcon, { paths: pathsData['edit']});
+const QuestionIcon = createIcon('question');
+const PlusIcon = createIcon('plus');
+const PlayIcon = createIcon('play');
+const PauseIcon = createIcon('pause');
+const DeleteIcon = createIcon('delete');
+const RefreshIcon = createIcon('refresh');
+const CodeIcon = createIcon('code');
+const DownloadIcon = createIcon('download');
+const UploadIcon = createIcon('upload');
+const EditIcon = createIcon('edit');
 
 const props = defineProps({
   elements: {
@@ -227,26 +240,30 @@ const props = defineProps({
   selectedEdge: Object
 });
 
+const emit = defineEmits([
+  'add-node', 'start-flow', 'stop-flow', 'continue-flow',
+  'reset-flow', 'update-node-label', 'update-node-command',
+  'delete-selected-edge', 'import-json'
+]);
+
 const flowName = ref('my_flow');
-const flowDescription = ref('My flow\'s desciption.');
+const flowDescription = ref('My flow\'s description');
 const daguYaml = ref('');
 const pipelineJson = ref('');
 const showPipelineJson = ref(false);
+const showDaguYaml = ref(false);
+const showHints = ref(false);
 
 const isGraphValid = computed(() => {
   const visited = new Set<string>();
   let currentNode: string | null = 'start';
   
   while (currentNode && currentNode !== 'end') {
-    if (visited.has(currentNode)) {
-      return false;
-    }
+    if (visited.has(currentNode)) return false;
     visited.add(currentNode);
     
     const edgesFromCurrent = getEdges.value.filter(e => e.source === currentNode);
-    if (edgesFromCurrent.length !== 1) {
-      return false;
-    }
+    if (edgesFromCurrent.length !== 1) return false;
     
     currentNode = edgesFromCurrent[0].target;
   }
@@ -302,7 +319,7 @@ const generatePipelineJson = () => {
         type: node.data.label.split('_')[0]
       };
 
-      // add params form nodesConfig
+      // add params from config
       const nodeType = node.data.label.split('_')[0];
       const operationName = node.data.label.split('_')[1];
       const nodeConfig = config[nodeType]?.find(n => n.name === operationName);
@@ -358,8 +375,97 @@ const downloadPipelineJson = () => {
   URL.revokeObjectURL(url);
 };
 
-const showHints = ref(false);
-const showDaguYaml = ref(false);
+
+// functions of import
+const triggerFileInput = () => {
+  fileInput.value?.click();
+};
+
+const handleFileSelect = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  if (!input.files || input.files.length === 0) return;
+
+  const file = input.files[0];
+  if (!file) return;
+
+  try {
+    const content = await readFileAsText(file);
+    const jsonConfig = JSON.parse(content);
+    
+    if (!jsonConfig || typeof jsonConfig !== 'object') {
+      throw new Error('Invalid JSON format');
+    }
+    
+    flowName.value = jsonConfig.name || 'imported_flow';
+    flowDescription.value = jsonConfig.description || '';
+    
+    emit('import-json', jsonConfig);
+    message.success('Flow импортирован успешно');
+  } catch (error) {
+    message.error(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Import error:', error);
+  } finally {
+    if (input) input.value = '';
+  }
+};
+
+const readFileAsText = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('File reading failed'));
+    reader.readAsText(file);
+  });
+};
+
+/*
+const handleJsonImport = async (options: { file: File } | FileList | null) => {
+  try {
+    // Обрабатываем разные варианты входных данных
+    let file: File | null = null;
+    
+    if (options instanceof FileList) {
+      file = options[0];
+    } else if (options && 'file' in options) {
+      file = options.file;
+    }
+
+    if (!file) {
+      throw new Error('Файл не выбран');
+    }
+
+    // Читаем содержимое файла
+    const fileContent = await readFile(file);
+    const jsonConfig = JSON.parse(fileContent);
+    
+    // Валидация структуры
+    if (!jsonConfig?.steps || !Array.isArray(jsonConfig.steps)) {
+      throw new Error('Некорректная структура JSON');
+    }
+    
+    // Обновляем название и описание
+    flowName.value = jsonConfig.name || 'imported_flow';
+    flowDescription.value = jsonConfig.description || '';
+    
+    // Передаем конфиг в FlowBuilder
+    emit('import-json', jsonConfig);
+    
+    message.success('Граф успешно импортирован');
+  } catch (error) {
+    console.error('Ошибка импорта:', error);
+    message.error(`Ошибка импорта: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+  }
+};
+
+const readFile = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target?.result as string);
+    reader.onerror = (e) => reject(new Error('Ошибка чтения файла: ' + e));
+    reader.readAsText(file);
+  });
+};
+*/ 
 
 const isProtectedNode = (nodeId: string) => {
   return nodeId === 'start' || nodeId === 'end';
