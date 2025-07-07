@@ -17,51 +17,13 @@ export interface NodesConfig {
   [category: string]: NodeConfig[];
 }
 
-const config: NodesConfig = {
-  proc: [
-    {
-      name: "comparison",
-      params: [
-        {
-          name: "propertyName",
-          type: "string",
-          required: true
-        },
-        {
-          name: "order",
-          type: "string",
-          enum: ["<", ">"],
-          required: true,
-          default: "<"
-        }
-      ]
-    },
-    {
-      name: "iterate",
-      params: [
-        {
-          name: "print",
-          type: "boolean",
-          default: true
-        }
-      ]
-    }
-  ],
-  bx24: [
-    {
-      name: "get_deals",
-      params: []
-    },
-    {
-      name: "get_deal_by_id",
-      params: [
-        {
-          name: "id",
-          type: "string"
-        }
-      ]
-    }
-  ]
+import nodesConfigJson from './nodes_config.json';
+
+// validate config structure
+const validateConfig = (config: unknown): NodesConfig => {
+  return config as NodesConfig;
 };
+
+const config: NodesConfig = validateConfig(nodesConfigJson);
 
 export default config;

@@ -6,13 +6,13 @@
             {
                 "name": "propertyName",
                 "type": "string",
-                "requred": true
+                "required": true
             },
             {
                 "name": "order",
                 "type": "string",
                 "enum": ["<", ">"],
-                "requred": true,
+                "required": true,
                 "default": "<"
             }
         ]

@@ -1,6 +1,4 @@
-// nodeTypes.ts
 import type { NodesConfig, NodeConfig, NodeParamType } from './nodesConfig';
-import config from './nodesConfig';
 
 type ParamToType<T extends NodeParamType> =
   T extends 'string' ? string :
@@ -13,15 +11,15 @@ type GenerateNodeData<T extends NodeConfig> = {
   processFunction: () => Promise<void>;
 } & {
   [P in T['params'][number] as P['name']]: 
-    P['required'] extends true 
+    P extends { required: true }
       ? ParamToType<P['type']>
-      : ParamToType<P['type']> | undefined
+      : (ParamToType<P['type']> | undefined)
 };
 
 type NodeDataMap = {
-  [K in keyof typeof config]: {
-    [N in typeof config[K][number]['name']]: 
-      GenerateNodeData<Extract<typeof config[K][number], { name: N }>>
+  [K in keyof NodesConfig]: {
+    [N in NodesConfig[K][number]['name']]: 
+      GenerateNodeData<Extract<NodesConfig[K][number], { name: N }>>
   }
 };
 
