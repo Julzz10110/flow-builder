@@ -197,7 +197,7 @@ import {
 import { useVueFlow, Edge } from '@vue-flow/core';
 import YAML from 'yaml';
 import CustomNode from '../types';
-import config from '../types/nodesConfig';
+// import config from '../types/nodesConfig';
 import { pathsData } from './icons';
 import CustomIcon from './icons/CustomIcon.vue';
 
@@ -315,22 +315,18 @@ const generatePipelineJson = () => {
     if (node && !isProtectedNode(node.id)) {
       const step: any = {
         name: node.data.label,
-        command: node.data.command,
-        type: node.data.label.split('_')[0]
+        command: node.data.command || '',
       };
 
-      // add params from config
-      const nodeType = node.data.label.split('_')[0];
-      const operationName = node.data.label.split('_')[1];
-      const nodeConfig = config[nodeType]?.find(n => n.name === operationName);
+      const allParams = Object.keys(node.data)
+        .filter(key => !['label', 'command', 'processFunction'].includes(key))
+        .reduce((acc, key) => {
+          acc[key] = node.data[key];
+          return acc;
+        }, {} as Record<string, any>);
       
-      if (nodeConfig) {
-        step.params = {};
-        nodeConfig.params.forEach(param => {
-          if (node.data[param.name] !== undefined) {
-            step.params[param.name] = node.data[param.name];
-          }
-        });
+      if (Object.keys(allParams).length > 0) {
+        step.params = allParams;
       }
       
       steps.push(step);
