@@ -286,10 +286,40 @@ const generateDAGUYaml = () => {
     
     const node = props.elements.find(n => n.id === nextNode) as CustomNode;
     if (node && !isProtectedNode(node.id)) {
-      steps.push({
+      const step: any = {
         name: node.data.label,
-        command: node.data.command
-      });
+        command: node.data.command || '',
+      };
+
+      // special handling for proc_get_request
+      if (node.data.label === 'proc_get_request') {
+        console.log('TEST node.data', node.data)
+        step.executor = {
+          type: 'http',
+          config: {
+            silent: true,
+            headers: node.data.headers
+          }
+        };
+        step.command = `GET ${node.data.url}`;
+        step.output = 'USER_DATA';
+        
+        // add headers if they exist
+        if (node.data.headers && node.data.headers.length > 0) {
+          step.executor.config.headers = node.data.headers.reduce((acc: Record<string, string>, header: string) => {
+            const [key, value] = header.split(':').map(s => s.trim());
+            if (key && value) {
+              acc[key] = value;
+            }
+            return acc;
+          }, {});
+        }
+      } else {
+        // default handling for other node types
+        step.command = node.data.command || '';
+      }
+      
+      steps.push(step);
     }
     currentNode = nextNode;
   }

@@ -67,7 +67,7 @@ import ToolPanel from './ToolPanel.vue';
 import NodeContextMenu from './NodeContextMenu.vue';
 import NodeSelectionMenu from './NodeSelectionMenu.vue';
 import CustomNode from '../types';
-import config from '../types/nodesConfig';
+// import config from '../types/nodesConfig';
 
 const elements = ref<Array<CustomNode | Edge>>([
   { 
@@ -411,7 +411,7 @@ const importJsonConfig = (jsonConfig: any) => {
     // steps processing
     jsonConfig.steps.forEach((step: any) => {
       const nodeId = uuidv4();
-      const [nodeType, operationName] = step.name.split('_');
+      // const [nodeType, operationName] = step.name.split('_');
       
       const nodeData: any = {
         label: step.name,
@@ -419,10 +419,10 @@ const importJsonConfig = (jsonConfig: any) => {
         processFunction: async () => await delay(1000)
       };
 
-      const nodeConfig = config[nodeType]?.find(n => n.name === operationName);
-      if (nodeConfig) {
-        nodeConfig.params.forEach(param => {
-          nodeData[param.name] = step.params?.[param.name] ?? param.default;
+      // add all params from the step to nodeData
+      if (step.params) {
+        Object.keys(step.params).forEach(paramName => {
+          nodeData[paramName] = step.params[paramName];
         });
       }
 
