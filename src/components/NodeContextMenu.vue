@@ -1,41 +1,35 @@
 <template>
-  <div 
-    v-if="visible"
-    class="node-context-menu"
-    :style="positionStyle"
-  >
+  <div v-if="visible" class="node-context-menu" :style="positionStyle">
     <n-card title="Редактирование шага" size="small" style="width: 350px">
       <n-form>
         <n-form-item label="Название шага">
-          <n-input 
-            v-model:value="localLabel" 
-            @blur="updateLabel"
-          />
+          <n-input v-model:value="localLabel" @blur="updateLabel" />
         </n-form-item>
         
         <n-form-item label="Команда">
-          <n-input 
-            v-model:value="localCommand" 
-            @blur="updateCommand"
-          />
+          <n-input v-model:value="localCommand" @blur="updateCommand" />
         </n-form-item>
 
-        <template v-if="nodeParams.length > 0">
-          <n-form-item 
-            v-for="param in nodeParams" 
-            :key="param.name"
-            :label="param.name"
-          >
-            <!-- Enum Params -->
+        <!-- Dynamic params for all node types -->
+        <template v-for="param in currentParams" :key="param.name">
+          <n-form-item :label="param.name">
+            <!-- String Params -->
+            <n-input
+              v-if="param.type === 'string' && !param.enum"
+              v-model:value="localParams[param.name]"
+              :placeholder="param.required ? 'Обязательное поле' : ''"
+            />
+            
+            <!-- Popup enum -->
             <n-select
-              v-if="param.type === 'string' && param.enum"
+              v-else-if="param.type === 'string' && param.enum"
               v-model:value="localParams[param.name]"
               :options="param.enum.map(e => ({ label: e, value: e }))"
             />
             
-            <!-- String Params -->
-            <n-input
-              v-else-if="param.type === 'string'"
+            <!-- Number Params -->
+            <n-input-number
+              v-else-if="param.type === 'number'"
               v-model:value="localParams[param.name]"
             />
             
@@ -45,18 +39,16 @@
               v-model:value="localParams[param.name]"
             />
             
-            <!-- Number Params -->
-            <n-input-number
-              v-else-if="param.type === 'number'"
+            <!-- Array<string> Params -->
+            <n-dynamic-tags
+              v-else-if="param.type === 'array' && param.item?.type === 'string'"
               v-model:value="localParams[param.name]"
             />
           </n-form-item>
         </template>
 
         <div style="display: flex; justify-content: flex-end; margin-top: 20px">
-          <n-button @click="saveAndClose" type="primary">
-            Сохранить
-          </n-button>
+          <n-button @click="saveAndClose" type="primary">Сохранить</n-button>
         </div>
       </n-form>
     </n-card>
@@ -66,8 +58,8 @@
 <script setup lang="ts">
 import { ref, watch, computed, defineProps, defineEmits } from 'vue';
 import { 
-  NInput, NButton, NCard, NForm, NFormItem,
-  NSelect, NSwitch, NInputNumber 
+  NInput, NButton, NCard, NForm, NFormItem, 
+  NSelect, NSwitch, NInputNumber, NDynamicTags 
 } from 'naive-ui';
 import nodesConfig from '@/types/nodesConfig';
 
@@ -92,32 +84,38 @@ const localLabel = ref('');
 const localCommand = ref('');
 const localParams = ref<Record<string, any>>({});
 
-// get parameters for the current node
-const nodeParams = computed(() => {
+const currentParams = computed(() => {
   if (!props.node?.data?.label) return [];
-  
-  // search in the config
-  const [nodeType, operationName] = props.node.data.label.split('_');
-  const operations = nodesConfig[nodeType];
-  const operation =  operations?.find(op => op.name === operationName);
-  if (operation) {
-      return operation.params;
+
+  for (const category of Object.values(nodesConfig)) {
+    const nodeConfig = category.find(n => props.node.data.label.includes(n.name));
+    if (nodeConfig) {
+      return nodeConfig.params || [];
     }
+  }
   return [];
 });
 
 watch(() => props.node, (newNode) => {
-  if (newNode) {
+  if (newNode?.data) {
     localLabel.value = newNode.data.label;
     localCommand.value = newNode.data.command || '';
-
-    nodeParams.value.forEach(param => {
+    
+    localParams.value = {};
+    
+    currentParams.value.forEach(param => {
       localParams.value[param.name] = newNode.data[param.name] !== undefined 
         ? newNode.data[param.name] 
-        : param.default;
+        : param.default !== undefined 
+          ? param.default 
+          : param.type === 'array' 
+            ? [] 
+            : param.type === 'boolean' 
+              ? false 
+              : '';
     });
   }
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
 const positionStyle = computed(() => ({
   left: `${props.x}px`,
@@ -126,18 +124,18 @@ const positionStyle = computed(() => ({
   zIndex: 1000
 }));
 
+const updateLabel = () => {
+  emit('update-label', localLabel.value);
+};
+
+const updateCommand = () => {
+  emit('update-command', localCommand.value);
+};
+
 const saveAndClose = () => {
   emit('update-label', localLabel.value);
   emit('update-command', localCommand.value);
-  
-  const paramsToUpdate: Record<string, any> = {};
-  nodeParams.value.forEach(param => {
-    if (localParams.value[param.name] !== undefined) {
-      paramsToUpdate[param.name] = localParams.value[param.name];
-    }
-  });
-  
-  emit('update-params', paramsToUpdate);
+  emit('update-params', localParams.value);
   emit('update:visible', false);
 };
 </script>
@@ -149,7 +147,6 @@ const saveAndClose = () => {
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
-
 .n-form-item {
   margin-bottom: 16px;
 }
