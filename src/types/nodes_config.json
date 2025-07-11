@@ -1,6 +1,24 @@
 {
   "proc": [
     {
+        "name": "get_request",
+        "params": [
+            {
+                "name": "url",
+                "type": "string",
+                "required": true
+            },
+            {
+                "name": "headers",
+                "type": "array",
+                "item": {
+                    "type": "string"
+                },
+                "default": []
+            }
+        ]
+    },
+    {
         "name": "comparison",
         "params": [
             {

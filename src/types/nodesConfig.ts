@@ -1,4 +1,8 @@
-export type NodeParamType = 'string' | 'number' | 'boolean';
+export type NodeParamType = 'string' | 'number' | 'boolean' | 'array';
+
+export interface NodeParamItemConfig {
+  type: 'string' | 'number' | 'boolean';
+}
 
 export interface NodeParamConfig {
   name: string;
@@ -6,6 +10,7 @@ export interface NodeParamConfig {
   required?: boolean;
   default?: any;
   enum?: string[];
+  item?: NodeParamItemConfig;
 }
 
 export interface NodeConfig {
@@ -19,7 +24,6 @@ export interface NodesConfig {
 
 import nodesConfigJson from './nodes_config.json';
 
-// validate config structure
 const validateConfig = (config: unknown): NodesConfig => {
   return config as NodesConfig;
 };
