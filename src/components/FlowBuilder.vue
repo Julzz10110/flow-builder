@@ -340,10 +340,17 @@ const updateNodeParams = (newParams: Record<string, any>) => {
   if (selectedNode.value) {
     const nodeIndex = elements.value.findIndex(el => el.id === selectedNode.value?.id);
     if (nodeIndex !== -1) {
-      const node = elements.value[nodeIndex] as CustomNode;
+      const node = { ...elements.value[nodeIndex] } as CustomNode;
+      
+      // update all parameters
       Object.keys(newParams).forEach(key => {
         node.data[key] = newParams[key];
       });
+      
+      // update the node in the array of elements
+      elements.value[nodeIndex] = node;
+      
+      // update the node in VueFlow
       updateNode(node.id, node);
     }
   }

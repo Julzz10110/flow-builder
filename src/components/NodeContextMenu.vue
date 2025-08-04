@@ -135,7 +135,8 @@ const updateCommand = () => {
 const saveAndClose = () => {
   emit('update-label', localLabel.value);
   emit('update-command', localCommand.value);
-  emit('update-params', localParams.value);
+  const paramsToUpdate = { ...localParams.value };
+  emit('update-params', paramsToUpdate);
   emit('update:visible', false);
 };
 </script>
