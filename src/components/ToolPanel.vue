@@ -276,6 +276,35 @@ const getNextNode = (nodeId: string): string | null => {
   return edges.length > 0 ? edges[0].target : null;
 };
 
+const generateJqFilter = (conditions: any[]) => {
+  return conditions
+    .filter(cond => cond.field && cond.operator && cond.value !== undefined)
+    .map(cond => {
+      let value = cond.value;
+      
+      if (typeof value === 'string') {
+        if (value === 'true') value = true;
+        else if (value === 'false') value = false;
+        else if (!isNaN(value)) value = Number(value);
+        else if (!value.startsWith('$')) value = `"${value}"`;
+      }
+
+      // handle nested fields
+      const fieldPath = cond.field.includes('.') 
+        ? cond.field.split('.').join('?.') 
+        : cond.field;
+
+      // handle operators
+      switch(cond.operator) {
+        case '==': return `(${fieldPath} == ${value})`;
+        case '!=': return `(${fieldPath} != ${value})`;
+        case 'contains': return `(${fieldPath} | contains(${value}))`;
+        default: return `(${fieldPath} ${cond.operator} ${value})`;
+      }
+    })
+    .join(' and ');
+};
+
 const generateDAGUYaml = () => {
   const steps = [];
   let currentNode = 'start';
@@ -288,12 +317,10 @@ const generateDAGUYaml = () => {
     if (node && !isProtectedNode(node.id)) {
       const step: any = {
         name: node.data.label,
-        command: node.data.command || '',
       };
 
-      // special handling for proc_get_request
+      // Обработка proc_get_request
       if (node.data.label === 'proc_get_request') {
-        console.log('TEST node.data', node.data)
         step.executor = {
           type: 'http',
           config: {
@@ -304,18 +331,35 @@ const generateDAGUYaml = () => {
         step.command = `GET ${node.data.url}`;
         step.output = 'USER_DATA';
         
-        // add headers if they exist
         if (node.data.headers && node.data.headers.length > 0) {
           step.executor.config.headers = node.data.headers.reduce((acc: Record<string, string>, header: string) => {
             const [key, value] = header.split(':').map(s => s.trim());
-            if (key && value) {
-              acc[key] = value;
-            }
+            if (key && value) acc[key] = value;
             return acc;
           }, {});
         }
-      } else {
-        // default handling for other node types
+      } 
+      // Обработка proc_json_filter
+      else if (node.data.label === 'proc_json_filter') {
+        step.executor = 'jq';
+        
+        const jqConditions = generateJqFilter(node.data.conditions || []);
+        let jqCommand = `${node.data.list || ''}[]`;
+        
+        if (jqConditions) {
+          jqCommand += ` | select(${jqConditions})`;
+        }
+        
+        if (node.data.output_fields?.length > 0) {
+          jqCommand += ` | {${node.data.output_fields.join(', ')}}`;
+        }
+        
+        step.command = jqCommand;
+        step.script = '{{ .PREVIOUS_STEP_OUTPUT }}';
+        step.output = 'FILTERED_DATA';
+      }
+      // Обработка других типов узлов
+      else {
         step.command = node.data.command || '';
       }
       
@@ -323,7 +367,6 @@ const generateDAGUYaml = () => {
     }
     currentNode = nextNode;
   }
-  
   const daguConfig = {
     name: flowName.value,
     description: flowDescription.value,

@@ -44,6 +44,49 @@
                 "default": true
             }
         ]
+    },
+    {
+      "name": "json_filter",
+      "params": [
+        {
+          "name": "list",
+          "type": "string",
+          "required": true,
+          "description": "Путь к массиву в JSON (например, '.users')"
+        },
+        {
+          "name": "conditions",
+          "type": "array",
+          "item": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string",
+                "description": "Поле для фильтрации"
+              },
+              "operator": {
+                "type": "string",
+                "enum": ["==", "!=", ">", "<", ">=", "<=", "contains"],
+                "description": "Оператор сравнения"
+              },
+              "value": {
+                "type": ["string", "number", "boolean"],
+                "description": "Значение для сравнения"
+              }
+            },
+            "required": ["field", "operator", "value"]
+          },
+          "description": "Условия фильтрации"
+        },
+        {
+          "name": "output_fields",
+          "type": "array",
+          "item": {
+            "type": "string"
+          },
+          "description": "Поля для вывода (если не указаны - выводятся все)"
+        }
+      ]
     }
   ],
   "bx24": [
