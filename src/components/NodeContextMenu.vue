@@ -6,10 +6,6 @@
           <n-input v-model:value="localLabel" @blur="updateLabel" />
         </n-form-item>
         
-        <n-form-item label="Команда">
-          <n-input v-model:value="localCommand" @blur="updateCommand" />
-        </n-form-item>
-
         <!-- General Params -->
         <template v-for="param in currentParams" :key="param.name">
           <!-- Param 'list' for json_filter -->
@@ -230,10 +226,6 @@ const validateConditions = () => {
 
 const updateLabel = () => {
   emit('update-label', localLabel.value);
-};
-
-const updateCommand = () => {
-  emit('update-command', localCommand.value);
 };
 
 const saveAndClose = () => {

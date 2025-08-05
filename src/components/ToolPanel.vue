@@ -242,7 +242,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'add-node', 'start-flow', 'stop-flow', 'continue-flow',
-  'reset-flow', 'update-node-label', 'update-node-command',
+  'reset-flow', 'update-node-label',
   'delete-selected-edge', 'import-json'
 ]);
 

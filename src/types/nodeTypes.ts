@@ -18,7 +18,6 @@ type ParamToType<T extends NodeParamType, I extends NodeParamItemConfig | undefi
 
 type GenerateNodeData<T extends NodeConfig> = {
   label: string;
-  command: string;
   processFunction: () => Promise<void>;
 } & {
   [P in T['params'][number] as P['name']]: 

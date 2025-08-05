@@ -13,7 +13,6 @@
         @continue-flow="continueFlow"
         @reset-flow="resetFlow"
         @update-node-label="updateNodeLabel"
-        @update-node-command="updateNodeCommand"
         @delete-selected-edge="deleteSelectedEdge"
         @import-json="importJsonConfig"
       />
@@ -73,7 +72,7 @@ const elements = ref<Array<CustomNode | Edge>>([
   { 
     id: 'start', 
     type: 'input', 
-    data: { label: 'start', command: '', processFunction: async () => { console.log('start'); await delay(1000); } }, 
+    data: { label: 'start', processFunction: async () => { console.log('start'); await delay(1000); } }, 
     position: { x: 50, y: 50 },
     sourcePosition: Position.Bottom,
     style: { 
@@ -90,7 +89,7 @@ const elements = ref<Array<CustomNode | Edge>>([
   { 
     id: 'end', 
     type: 'output', 
-    data: { label: 'end', command: '', processFunction: async () => { console.log('end'); await delay(1000); } }, 
+    data: { label: 'end', processFunction: async () => { console.log('end'); await delay(1000); } }, 
     position: { x: 500, y: 400 },
     sourcePosition: Position.Top,
     style: { 
@@ -231,7 +230,6 @@ const addNode = (nodeData: { label: string, params: any[] }) => {
     id: newNodeId,
     data: { 
       label: nodeData.label,
-      command: '',
       ...params,
       processFunction: async () => { 
         console.log(`Выполняется шаг ${newNodeId}`); 
@@ -326,16 +324,6 @@ const updateNodeLabel = (newLabel: string) => {
   }
 };
 
-const updateNodeCommand = (newCommand: string) => {
-  if (selectedNode.value && !isProtectedNode(selectedNode.value.id)) {
-    const nodeIndex = elements.value.findIndex(el => el.id === selectedNode.value?.id);
-    if (nodeIndex !== -1) {
-      (elements.value[nodeIndex] as CustomNode).data.command = newCommand;
-      updateNode(selectedNode.value.id, elements.value[nodeIndex]);
-    }
-  }
-};
-
 const updateNodeParams = (newParams: Record<string, any>) => {
   if (selectedNode.value) {
     const nodeIndex = elements.value.findIndex(el => el.id === selectedNode.value?.id);
@@ -399,7 +387,7 @@ const importJsonConfig = (jsonConfig: any) => {
     newNodes.push({
       id: 'start',
       type: 'input',
-      data: { label: 'start', command: '', processFunction: async () => await delay(1000) },
+      data: { label: 'start', processFunction: async () => await delay(1000) },
       position: { x: xPos, y: 50 },
       sourcePosition: Position.Bottom,
       style: { 
