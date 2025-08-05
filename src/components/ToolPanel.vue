@@ -321,7 +321,7 @@ const result = ${node.data.list || 'input'}.filter(item => {
   return ${generateNodeFilterConditions(node.data.conditions || [])};
 });
 ${node.data.output_fields?.length > 0 ? 
-  `console.log(JSON.stringify(result.map(item => (${generateOutputFields(node.data.output_fields)})));` : 
+  `console.log(JSON.stringify(result.map(item => (${generateOutputFields(node.data.output_fields)}))));` : 
   'console.log(JSON.stringify(result));'}
 `;
         
