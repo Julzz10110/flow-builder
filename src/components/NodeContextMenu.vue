@@ -18,34 +18,46 @@
           
           <!-- Filter Conditions -->
           <n-form-item v-else-if="param.name === 'conditions' && node.data.label === 'proc_json_filter'" label="Условия фильтрации">
-            <div v-for="(cond, index) in localParams.conditions" :key="index" class="condition-row">
-              <n-input 
-                v-model:value="cond.field" 
-                placeholder="Поле"
-                style="width: 120px; margin-right: 8px"
-              />
-              <n-select
-                v-model:value="cond.operator"
-                :options="operatorOptions"
-                style="width: 100px; margin-right: 8px"
-              />
-              <n-input
-                v-model:value="cond.value"
-                placeholder="Значение"
-                style="flex: 1"
-              />
-              <n-button 
-                @click="removeCondition(index)" 
-                type="error" 
-                text
-                style="margin-left: 8px"
-              >
-                <n-icon><delete-icon /></n-icon>
-              </n-button>
-            </div>
-            <n-button @click="addCondition" type="primary" size="small" style="margin-top: 8px">
-              Добавить условие
-            </n-button>
+            <!-- Display conditions as tags -->
+            <n-space vertical>
+              <n-space wrap>
+                <n-tag
+                  v-for="(cond, index) in localParams.conditions"
+                  :key="index"
+                  closable
+                  @close="removeCondition(index)"
+                  type="info"
+                >
+                  {{ cond.field }} {{ cond.operator }} {{ cond.value }}
+                </n-tag>
+              </n-space>
+              
+              <!-- Input for new condition -->
+              <n-space>
+                <n-input
+                  v-model:value="newCondition.field"
+                  placeholder="Поле"
+                  style="width: 100px"
+                />
+                <n-select
+                  v-model:value="newCondition.operator"
+                  :options="operatorOptions"
+                  style="width: 100px"
+                />
+                <n-input
+                  v-model:value="newCondition.value"
+                  placeholder="Значение"
+                  style="width: 100px"
+                />
+                <n-button
+                  @click="addCondition"
+                  type="primary"
+                  size="small"
+                >
+                  Добавить
+                </n-button>
+              </n-space>
+            </n-space>
           </n-form-item>
 
           <!-- Output Fields -->
@@ -89,26 +101,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, h, defineProps, defineEmits } from 'vue';
+import { ref, watch, computed, defineProps, defineEmits } from 'vue';
 import { 
   NInput, NButton, NCard, NForm, NFormItem, 
-  NSelect, NSwitch, NInputNumber, NDynamicTags, NIcon
+  NSelect, NSwitch, NInputNumber, NDynamicTags, NTag, NSpace
 } from 'naive-ui';
-import { pathsData } from './icons';
-import CustomIcon from './icons/CustomIcon.vue';
 import nodesConfig from '@/types/nodesConfig';
 import { useMessage } from 'naive-ui';
 
 const message = useMessage();
-
-// create icon (todo: remove dublicate code)
-const createIcon = (iconName: string) => {
-  const iconPaths = pathsData?.[iconName];
-  return iconPaths ? h(CustomIcon, { paths: iconPaths }) : null;
-};
-
-const DeleteIcon = createIcon('delete');
-
 
 const props = defineProps({
   node: {
@@ -128,12 +129,16 @@ const emit = defineEmits([
 ]);
 
 const localLabel = ref('');
-const localCommand = ref('');
 const localParams = ref<Record<string, any>>({
   conditions: [],
   output_fields: []
 });
 
+const newCondition = ref({
+  field: '',
+  operator: '==',
+  value: ''
+});
 
 const operatorOptions = [
   { label: '=', value: '==' },
@@ -160,7 +165,6 @@ const currentParams = computed(() => {
 watch(() => props.node, (newNode) => {
   if (newNode?.data) {
     localLabel.value = newNode.data.label;
-    localCommand.value = newNode.data.command || '';
     localParams.value = {
       conditions: [],
       output_fields: []
@@ -168,13 +172,11 @@ watch(() => props.node, (newNode) => {
     
     currentParams.value.forEach(param => {
       if (param.name === 'conditions') {
-        // ensure that conditions will be an array
         localParams.value.conditions = Array.isArray(newNode.data[param.name]) 
           ? [...newNode.data[param.name]]
-          : [{ field: '', operator: '==', value: '' }];
+          : [];
       } 
       else if (param.name === 'output_fields') {
-        // ensure that output_fields will be an array
         localParams.value.output_fields = Array.isArray(newNode.data[param.name]) 
           ? [...newNode.data[param.name]]
           : [];
@@ -182,17 +184,36 @@ watch(() => props.node, (newNode) => {
       else {
         localParams.value[param.name] = newNode.data[param.name] !== undefined 
           ? newNode.data[param.name] 
-          : param.default !== undefined 
-            ? param.default 
-            : param.type === 'array' 
-              ? [] 
-              : param.type === 'boolean' 
-                ? false 
-                : '';
+          : param.default;
       }
     });
   }
 }, { immediate: true, deep: true });
+
+const addCondition = () => {
+  if (!newCondition.value.field) {
+    message.error('Поле не может быть пустым');
+    return;
+  }
+  
+  localParams.value.conditions.push({ ...newCondition.value });
+  newCondition.value = { field: '', operator: '==', value: '' };
+};
+
+const removeCondition = (index: number) => {
+  localParams.value.conditions.splice(index, 1);
+};
+
+const saveAndClose = () => {
+  emit('update-label', localLabel.value);
+  emit('update-params', { 
+    ...localParams.value,
+    conditions: localParams.value.conditions.filter(
+      cond => cond.field && cond.value !== undefined
+    )
+  });
+  emit('update:visible', false);
+};
 
 const positionStyle = computed(() => ({
   left: `${props.x}px`,
@@ -201,43 +222,8 @@ const positionStyle = computed(() => ({
   zIndex: 1000
 }));
 
-const addCondition = () => {
-  if (!localParams.value.conditions) {
-    localParams.value.conditions = [];
-  }
-  localParams.value.conditions.push({
-    field: '',
-    operator: '==',
-    value: ''
-  });
-};
-
-const removeCondition = (index: number) => {
-  localParams.value.conditions.splice(index, 1);
-};
-
-const validateConditions = () => {
-  if (!localParams.value.conditions) return true;
-  
-  return localParams.value.conditions.every(cond => 
-    cond.field && cond.operator && cond.value !== undefined
-  );
-};
-
 const updateLabel = () => {
   emit('update-label', localLabel.value);
-};
-
-const saveAndClose = () => {
-  if (localLabel.value === 'proc_json_filter' && !validateConditions()) {
-    message.error('Заполните все поля условий фильтрации');
-    return;
-  }
-  
-  emit('update-label', localLabel.value);
-  emit('update-command', localCommand.value);
-  emit('update-params', { ...localParams.value });
-  emit('update:visible', false);
 };
 </script>
 
@@ -250,10 +236,5 @@ const saveAndClose = () => {
 }
 .n-form-item {
   margin-bottom: 16px;
-}
-.condition-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
 }
 </style>

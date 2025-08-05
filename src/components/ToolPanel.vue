@@ -325,7 +325,7 @@ ${node.data.output_fields?.length > 0 ?
   'console.log(JSON.stringify(result));'}
 `;
         
-        step.command = `node -e "${filterCode.replace(/"/g, '\\"').replace(/\n/g, '')}" "{{ .PREVIOUS_STEP_OUTPUT }}"`;
+        step.command = `node -e "${filterCode.replace(/"/g, '\\"').replace(/\n/g, '')}"`;
         step.output = 'FILTERED_DATA';
       }
       // handle other node types
