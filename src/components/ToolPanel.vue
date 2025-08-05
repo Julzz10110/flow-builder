@@ -276,35 +276,6 @@ const getNextNode = (nodeId: string): string | null => {
   return edges.length > 0 ? edges[0].target : null;
 };
 
-const generateJqFilter = (conditions: any[]) => {
-  return conditions
-    .filter(cond => cond.field && cond.operator && cond.value !== undefined)
-    .map(cond => {
-      let value = cond.value;
-      
-      if (typeof value === 'string') {
-        if (value === 'true') value = true;
-        else if (value === 'false') value = false;
-        else if (!isNaN(value)) value = Number(value);
-        else if (!value.startsWith('$')) value = `"${value}"`;
-      }
-
-      // handle nested fields
-      const fieldPath = cond.field.includes('.') 
-        ? cond.field.split('.').join('?.') 
-        : cond.field;
-
-      // handle operators
-      switch(cond.operator) {
-        case '==': return `(${fieldPath} == ${value})`;
-        case '!=': return `(${fieldPath} != ${value})`;
-        case 'contains': return `(${fieldPath} | contains(${value}))`;
-        default: return `(${fieldPath} ${cond.operator} ${value})`;
-      }
-    })
-    .join(' and ');
-};
-
 const generateDAGUYaml = () => {
   const steps = [];
   let currentNode = 'start';
@@ -319,7 +290,7 @@ const generateDAGUYaml = () => {
         name: node.data.label,
       };
 
-      // Обработка proc_get_request
+      // handle proc_get_request
       if (node.data.label === 'proc_get_request') {
         step.executor = {
           type: 'http',
@@ -329,7 +300,7 @@ const generateDAGUYaml = () => {
           }
         };
         step.command = `GET ${node.data.url}`;
-        step.output = 'USER_DATA';
+        step.output = node.data.label.toUpperCase() + '_DATA';
         
         if (node.data.headers && node.data.headers.length > 0) {
           step.executor.config.headers = node.data.headers.reduce((acc: Record<string, string>, header: string) => {
@@ -339,26 +310,25 @@ const generateDAGUYaml = () => {
           }, {});
         }
       } 
-      // Обработка proc_json_filter
+      // handle proc_json_filter
       else if (node.data.label === 'proc_json_filter') {
-        step.executor = 'jq';
+        step.executor = 'command';
         
-        const jqConditions = generateJqFilter(node.data.conditions || []);
-        let jqCommand = `${node.data.list || ''}[]`;
+        // generate the Node.js filter code
+        let filterCode = `
+const input = JSON.parse(process.env.${getPreviousNodeOutputName(node.id)});
+const result = ${node.data.list || 'input'}.filter(item => {
+  return ${generateNodeFilterConditions(node.data.conditions || [])};
+});
+${node.data.output_fields?.length > 0 ? 
+  `console.log(JSON.stringify(result.map(item => (${generateOutputFields(node.data.output_fields)})));` : 
+  'console.log(JSON.stringify(result));'}
+`;
         
-        if (jqConditions) {
-          jqCommand += ` | select(${jqConditions})`;
-        }
-        
-        if (node.data.output_fields?.length > 0) {
-          jqCommand += ` | {${node.data.output_fields.join(', ')}}`;
-        }
-        
-        step.command = jqCommand;
-        step.script = '{{ .PREVIOUS_STEP_OUTPUT }}';
+        step.command = `node -e "${filterCode.replace(/"/g, '\\"').replace(/\n/g, '')}" "{{ .PREVIOUS_STEP_OUTPUT }}"`;
         step.output = 'FILTERED_DATA';
       }
-      // Обработка других типов узлов
+      // handle other node types
       else {
         step.command = node.data.command || '';
       }
@@ -367,6 +337,7 @@ const generateDAGUYaml = () => {
     }
     currentNode = nextNode;
   }
+  
   const daguConfig = {
     name: flowName.value,
     description: flowDescription.value,
@@ -374,6 +345,51 @@ const generateDAGUYaml = () => {
   };
   
   daguYaml.value = YAML.stringify(daguConfig);
+};
+
+
+// helper function to get previous node's output name
+const getPreviousNodeOutputName = (nodeId: string) => {
+  const edges = getEdges.value;
+  const edge = edges.find(e => e.target === nodeId);
+  if (!edge) return '';
+
+  const prevNode = props.elements.find(n => n.id === edge.source) as CustomNode;
+  return prevNode ? `${prevNode.data.label.toUpperCase()}_DATA` : '';
+};
+
+// helper function to generate filter conditions for Node.js
+const generateNodeFilterConditions = (conditions: any[]) => {
+  return conditions
+    .filter(cond => cond.field && cond.operator && cond.value !== undefined)
+    .map(cond => {
+      const fieldPath = cond.field.includes('.') 
+        ? cond.field.split('.').join('?.') 
+        : `item?.${cond.field}`;
+      
+      let value = cond.value;
+      if (typeof value === 'string' && !['true', 'false'].includes(value) && isNaN(Number(value))) {
+        value = `'${value.replace(/'/g, "\\'")}'`;
+      }
+
+      switch(cond.operator) {
+        case '==': return `${fieldPath} == ${value}`;
+        case '!=': return `${fieldPath} != ${value}`;
+        case 'contains': 
+          return typeof value === 'string' 
+            ? `${fieldPath}?.includes(${value})`
+            : `${fieldPath}?.includes(${value})`;
+        default: return `${fieldPath} ${cond.operator} ${value}`;
+      }
+    })
+    .join(' && ') || 'true'; // default to true if no conditions
+};
+
+// helper function to generate output fields mapping
+const generateOutputFields = (fields: string[]) => {
+  return `{
+    ${fields.map(field => `'${field}': item?.${field}`).join(',\n    ')}
+  }`;
 };
 
 const generatePipelineJson = () => {
